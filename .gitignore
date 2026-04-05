@@ -1,0 +1,70 @@
+# ==================== Python ====================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+venv/
+.venv/
+env/
+
+# Python testing / coverage
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ==================== Environment ====================
+.env
+.env.*
+!.env.example
+
+# ==================== Database ====================
+*.db
+*.sqlite
+*.sqlite3
+*.sqbpro
+
+# ==================== Logs ====================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ==================== Node.js ====================
+node_modules/
+
+# ==================== Frontend build ====================
+frontend/dist/
+frontend/dist-ssr/
+
+# ==================== IDE / Editor ====================
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.code-workspace
+
+# ==================== OS ====================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ==================== Misc ====================
+*.local
+*.bak
+*.tmp
+*.swp
+*.swo
