@@ -68,3 +68,33 @@ desktop.ini
 *.tmp
 *.swp
 *.swo
+
+# ==================== CodeBuddy ====================
+.codebuddy/
+
+# ==================== React Native / Expo (mobile/) ====================
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/.kotlin/
+mobile/.gradle/
+mobile/android/app/build/
+mobile/android/.gradle/
+mobile/android/build/
+mobile/*.jks
+mobile/*.p8
+mobile/*.p12
+mobile/*.key
+mobile/*.provisioning-profile
+mobile/google-services.json
+mobile/GoogleService-Info.plist
+mobile/*.mobileprovision
+mobile/*.orig.*
+
+# ==================== Lock files (可选，团队协作建议保留) ====================
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# ==================== Learning docs (可选) ====================
+# LEARNING_GUIDE.md
