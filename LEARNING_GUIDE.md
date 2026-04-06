@@ -2,6 +2,9 @@
 
 > 面向前端初学者 → AI 开发工程师
 
+测试账号：test@synchealth.com
+密码：testpass123
+
 ## 项目概况
 
 **SyncHealth** 是一个「个人健康数据同步 + AI 分析」全栈平台，涵盖：
@@ -77,6 +80,11 @@ npm run dev
 ## 第三阶段：理解后端（从你会的 Python 出发）
 
 你已经学过简单 Python，这个后端代码非常规范，按层阅读：
+启动后端首先要通过.venv\scripts\activate激活环境，然后执行以下代码启动后端：
+`
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+`
+
 
 ### 3.1 入口和配置（1天）
 
