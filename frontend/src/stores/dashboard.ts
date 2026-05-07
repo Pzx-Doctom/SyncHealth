@@ -20,19 +20,28 @@ export const useDashboardStore = defineStore('dashboard', () => {
   }
 
   async function fetchTrends(period: string = '7d') {
-    const res = await dashboardApi.getTrends(period)
-    trends.value = res.data
+    try {
+      const res = await dashboardApi.getTrends(period)
+      trends.value = res.data
+    } catch (e) {
+      console.error('[Dashboard] 获取趋势数据失败:', e)
+    }
   }
 
   async function fetchHealthScore() {
-    const res = await dashboardApi.getHealthScore()
-    healthScore.value = res.data
+    try {
+      const res = await dashboardApi.getHealthScore()
+      healthScore.value = res.data
+    } catch (e) {
+      console.error('[Dashboard] 获取健康评分失败:', e)
+    }
   }
 
   async function fetchAll(period: string = '7d') {
     loading.value = true
     try {
-      await Promise.all([fetchSummary(), fetchTrends(period), fetchHealthScore()])
+      // 每个请求独立捕获错误，一个失败不影响其他
+      await Promise.allSettled([fetchSummary(), fetchTrends(period), fetchHealthScore()])
     } finally {
       loading.value = false
     }

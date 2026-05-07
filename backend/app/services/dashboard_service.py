@@ -165,19 +165,21 @@ async def get_health_score(db: AsyncSession, user_id: int) -> HealthScore:
     week_ago = now - timedelta(days=7)
 
     # Activity score (based on steps: 10000 = 100)
-    step_r = await db.execute(
-        select(func.avg(func.sum(ActivitySample.value))).select_from(
-            select(ActivitySample.recorded_at, func.sum(ActivitySample.value).label("daily_steps"))
-            .where(
-                ActivitySample.user_id == user_id,
-                ActivitySample.metric_type == "steps",
-                ActivitySample.recorded_at >= week_ago,
-            )
-            .group_by(func.date(ActivitySample.recorded_at))
-            .subquery()
+    # 两步查询：先查每日总步数，再在 Python 中求平均（避免 SQLite 嵌套聚合不兼容）
+    daily_steps_r = await db.execute(
+        select(func.sum(ActivitySample.value).label("daily_steps"))
+        .where(
+            ActivitySample.user_id == user_id,
+            ActivitySample.metric_type == "steps",
+            ActivitySample.recorded_at >= week_ago,
         )
+        .group_by(func.date(ActivitySample.recorded_at))
     )
-    avg_steps = step_r.scalar() or 0
+    daily_steps_rows = daily_steps_r.all()
+    if daily_steps_rows:
+        avg_steps = sum(r[0] or 0 for r in daily_steps_rows) / len(daily_steps_rows)
+    else:
+        avg_steps = 0
     activity_score = min(100, (avg_steps / 10000) * 100)
 
     # Sleep score (7-9 hours = 100)
