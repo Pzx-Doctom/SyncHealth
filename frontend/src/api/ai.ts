@@ -1,9 +1,9 @@
 import apiClient from './client'
-import type { ChatMessageOut, ChatSessionOut, AgentOut, AgentCreate } from '../types/ai'
+import type { ChatMessageOut, ChatSessionOut, AgentOut, AgentCreate, DifyReference } from '../types/ai'
 
 export const aiApi = {
   chat(message: string, sessionId?: number, agentId?: number) {
-    return apiClient.post<{ session_id: number; response: string }>('/ai/chat', {
+    return apiClient.post<{ session_id: number; response: string; dify_references: DifyReference[] }>('/ai/chat', {
       message,
       session_id: sessionId,
       agent_id: agentId,

@@ -1,9 +1,17 @@
+export interface DifyReference {
+  document_name: string
+  score: number | null
+  keywords: string[]
+  content: string
+}
+
 export interface ChatMessageOut {
   id: number
   session_id: number
   role: string
   content: string
   created_at: string
+  dify_references?: DifyReference[] | null
 }
 
 export interface ChatSessionOut {

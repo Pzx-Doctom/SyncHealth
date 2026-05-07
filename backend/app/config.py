@@ -24,6 +24,16 @@ class Settings(BaseSettings):
     AI_MAX_CONTEXT_TOKENS: int = 8000
     AI_TEMPERATURE: float = 0.7
 
+    # Dify Knowledge Base
+    DIFY_API_BASE: str = "https://api.dify.ai/v1"
+    DIFY_API_KEY: str = ""
+    DIFY_DATASET_ID: str = ""
+    DIFY_RETRIEVE_ENABLED: bool = False
+    DIFY_SEARCH_METHOD: str = ""  # keyword_search | semantic_search | full_text_search | hybrid_search | ""(use dataset default)
+    DIFY_RETRIEVE_TOP_K: int = 5
+    DIFY_SCORE_THRESHOLD_ENABLED: bool = False
+    DIFY_SCORE_THRESHOLD: float = 0.5
+
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000", "http://localhost:3001", "http://localhost:8081", "http://localhost:8082"]
 

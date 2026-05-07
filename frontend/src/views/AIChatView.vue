@@ -28,6 +28,14 @@ function scrollToBottom() {
 function selectSession(sessionId: number) {
   aiStore.loadSession(sessionId)
 }
+
+function toggleRef(el: EventTarget | null) {
+  const target = el as HTMLElement | null
+  const detail = target?.nextElementSibling as HTMLElement | null
+  if (detail) {
+    detail.classList.toggle('ref-open')
+  }
+}
 </script>
 
 <template>
@@ -70,6 +78,22 @@ function selectSession(sessionId: number) {
           <div class="message-avatar">{{ msg.role === 'user' ? '👤' : '🤖' }}</div>
           <div class="message-content">
             <div class="message-text">{{ msg.content }}</div>
+            <!-- RAG References -->
+            <div v-if="msg.role === 'assistant' && msg.dify_references?.length" class="rag-section">
+              <span class="rag-badge" @click="toggleRef($event.currentTarget)">📚 知识库引用 ({{ msg.dify_references.length }})</span>
+              <div class="rag-details">
+                <div v-for="(ref, idx) in msg.dify_references" :key="idx" class="rag-item">
+                  <div class="rag-item-header">
+                    <span class="rag-doc">{{ ref.document_name }}</span>
+                    <span v-if="ref.score != null" class="rag-score">{{ (ref.score * 100).toFixed(0) }}%</span>
+                  </div>
+                  <div v-if="ref.keywords?.length" class="rag-keywords">
+                    <span v-for="kw in ref.keywords" :key="kw" class="rag-kw">{{ kw }}</span>
+                  </div>
+                  <div class="rag-content">{{ ref.content }}</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div v-if="aiStore.loading" class="message assistant">
@@ -159,6 +183,57 @@ function selectSession(sessionId: number) {
 }
 .message.user .message-content { background: var(--color-primary); color: white; }
 .typing { color: var(--color-text-secondary); font-style: italic; }
+
+/* RAG References */
+.rag-section { margin-top: 10px; border-top: 1px solid #e5e7eb; padding-top: 8px; }
+.rag-badge {
+  display: inline-block;
+  font-size: 12px;
+  color: #6366f1;
+  cursor: pointer;
+  user-select: none;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #eef2ff;
+  transition: background 0.15s;
+}
+.rag-badge:hover { background: #e0e7ff; }
+.rag-details { display: none; margin-top: 8px; }
+.rag-details.ref-open { display: block; }
+.rag-item {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.rag-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.rag-doc { font-weight: 600; color: #374151; }
+.rag-score {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 500;
+}
+.rag-keywords { margin-bottom: 4px; display: flex; gap: 4px; flex-wrap: wrap; }
+.rag-kw {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: #fef3c7;
+  color: #92400e;
+}
+.rag-content {
+  color: #6b7280;
+  line-height: 1.5;
+  max-height: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre-wrap;
+}
 
 .chat-input-area {
   padding: 16px 32px;

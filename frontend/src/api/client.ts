@@ -168,7 +168,7 @@ const apiClient = axios.create({
    * 可以在不同环境（开发/生产）中设置不同的 API 地址，
    * || 'http://127.0.0.1:8000/api/v1' 是默认值回退。
    */
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api/v1',
 
   /**
    * headers：默认请求头
