@@ -50,7 +50,7 @@ npm run dev
 打开 `http://localhost:3000`，用 `test@synchealth.com` / `testpass123` 登录，体验所有功能。
 
 ---
-
+·
 ## 第二阶段：吃透前端（你已经会 Vue，重点补 TypeScript 和工程化）
 
 按以下顺序阅读前端文件，**每个文件都要读懂每一行**：
