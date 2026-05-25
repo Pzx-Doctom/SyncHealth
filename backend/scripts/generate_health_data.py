@@ -26,7 +26,7 @@ if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 # ============== 配置 ==============
-API_BASE_URL = "http://127.0.0.1:8000/api/v1"
+API_BASE_URL = "http://127.0.0.1:8001/api/v1"
 EMAIL = "test@synchealth.com"
 PASSWORD = "testpass123"
 DISPLAY_NAME = "Test User"
