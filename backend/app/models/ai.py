@@ -39,4 +39,5 @@ class ChatMessage(Base):
     role: Mapped[str] = mapped_column(String(20), nullable=False)  # user, assistant, system
     content: Mapped[str] = mapped_column(Text, nullable=False)
     health_context_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON
+    dify_context_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)  # Dify knowledge context
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))

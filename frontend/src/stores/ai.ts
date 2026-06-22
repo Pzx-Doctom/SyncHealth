@@ -44,6 +44,7 @@ export const useAIStore = defineStore('ai', () => {
         role: 'assistant',
         content: res.data.response,
         created_at: new Date().toISOString(),
+        dify_references: res.data.dify_references?.length ? res.data.dify_references : null,
       })
 
       await fetchSessions()

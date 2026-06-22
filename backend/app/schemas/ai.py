@@ -9,12 +9,21 @@ class ChatMessageIn(BaseModel):
     agent_id: int | None = None
 
 
+class DifyReference(BaseModel):
+    """A single RAG knowledge reference."""
+    document_name: str
+    score: float | None = None
+    keywords: list[str] = []
+    content: str = ""
+
+
 class ChatMessageOut(BaseModel):
     id: int
     session_id: int
     role: str
     content: str
     created_at: datetime
+    dify_references: list[DifyReference] | None = None
 
     model_config = {"from_attributes": True}
 
