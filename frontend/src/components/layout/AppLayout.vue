@@ -12,6 +12,7 @@ const navItems = [
   { path: '/sleep', label: '睡眠', icon: '🌙' },
   { path: '/activity', label: '活动', icon: '🏃' },
   { path: '/workouts', label: '运动', icon: '💪' },
+  { path: '/upload', label: '数据导入', icon: '📥' },
   { path: '/chat', label: 'AI 对话', icon: '🤖' },
   { path: '/agents', label: '智能体', icon: '⚙️' },
 ]

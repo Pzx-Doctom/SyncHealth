@@ -12,6 +12,7 @@ class DashboardSummary(BaseModel):
     flights_climbed: float
     avg_heart_rate: float | None = None
     resting_heart_rate: float | None = None
+    walking_heart_rate_average: float | None = None
     sleep_hours: float | None = None
     spo2_percent: float | None = None
     stand_hours: float

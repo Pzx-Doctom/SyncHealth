@@ -24,6 +24,7 @@ const routes = [
       { path: 'sleep', name: 'Sleep', component: () => import('../views/SleepView.vue') },
       { path: 'activity', name: 'Activity', component: () => import('../views/ActivityView.vue') },
       { path: 'workouts', name: 'Workouts', component: () => import('../views/WorkoutsView.vue') },
+      { path: 'upload', name: 'Upload', component: () => import('../views/UploadView.vue') },
       { path: 'chat', name: 'AIChat', component: () => import('../views/AIChatView.vue') },
       { path: 'agents', name: 'Agents', component: () => import('../views/AgentBuilderView.vue') },
     ],

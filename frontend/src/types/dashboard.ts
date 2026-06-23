@@ -7,6 +7,7 @@ export interface DashboardSummary {
   flights_climbed: number
   avg_heart_rate?: number
   resting_heart_rate?: number
+  walking_heart_rate_average?: number
   sleep_hours?: number
   spo2_percent?: number
   stand_hours: number

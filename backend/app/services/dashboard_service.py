@@ -50,6 +50,15 @@ async def get_dashboard_summary(db: AsyncSession, user_id: int) -> DashboardSumm
     )
     resting_hr = rhr_result.scalar()
 
+    # Walking heart rate average (latest)
+    whr_result = await db.execute(
+        select(HeartRate.bpm).where(
+            HeartRate.user_id == user_id,
+            HeartRate.measurement_type == "walking_heart_rate_average",
+        ).order_by(HeartRate.recorded_at.desc()).limit(1)
+    )
+    walking_hr = whr_result.scalar()
+
     # Sleep last night
     yesterday_start = today_start - timedelta(days=1)
     sleep_result = await db.execute(
@@ -82,6 +91,7 @@ async def get_dashboard_summary(db: AsyncSession, user_id: int) -> DashboardSumm
         flights_climbed=flights,
         avg_heart_rate=round(avg_hr, 1) if avg_hr else None,
         resting_heart_rate=round(resting_hr, 1) if resting_hr else None,
+        walking_heart_rate_average=round(walking_hr, 1) if walking_hr else None,
         sleep_hours=sleep_hours,
         spo2_percent=round(spo2, 1) if spo2 else None,
         stand_hours=stand,

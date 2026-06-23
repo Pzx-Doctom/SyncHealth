@@ -81,6 +81,13 @@ function formatNumber(n?: number | null) {
             <span class="metric-label">静息心率 bpm</span>
           </div>
         </div>
+        <div class="metric-card card">
+          <div class="metric-icon" style="background:#FDF2F8;color:#EC4899">🚶</div>
+          <div class="metric-body">
+            <span class="metric-value">{{ dashboardStore.summary.walking_heart_rate_average?.toFixed(0) || '--' }}</span>
+            <span class="metric-label">步行平均心率 bpm</span>
+          </div>
+        </div>
       </div>
 
       <!-- Trends -->
