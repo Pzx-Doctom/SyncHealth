@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     DIFY_SCORE_THRESHOLD_ENABLED: bool = False
     DIFY_SCORE_THRESHOLD: float = 0.5
 
+    # Apple Health 导入
+    UPLOAD_DIR: str = "./data/uploads"
+
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000", "http://localhost:3001", "http://localhost:8081", "http://localhost:8082"]
 

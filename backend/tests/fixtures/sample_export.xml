@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HealthData locale="en_US">
+  <ExportDate value="2024-01-15 12:00:00 +0800"/>
+
+  <!-- 心率记录 -->
+  <Record type="HKQuantityTypeIdentifierHeartRate"
+           unit="count/min"
+           value="72"
+           startDate="2024-01-01 08:00:00 +0800"
+           endDate="2024-01-01 08:00:00 +0800"
+           sourceName="Apple Watch"
+           HKObjectUUID="test-hr-001"/>
+
+  <!-- 静息心率 -->
+  <Record type="HKQuantityTypeIdentifierRestingHeartRate"
+           unit="count/min"
+           value="58"
+           startDate="2024-01-01 07:00:00 +0800"
+           endDate="2024-01-01 07:00:00 +0800"
+           sourceName="Apple Watch"
+           HKObjectUUID="test-resting-hr-001"/>
+
+  <!-- 步数 -->
+  <Record type="HKQuantityTypeIdentifierStepCount"
+           unit="count"
+           value="8432"
+           startDate="2024-01-01 00:00:00 +0800"
+           endDate="2024-01-01 23:59:59 +0800"
+           sourceName="iPhone"
+           HKObjectUUID="test-step-001"/>
+
+  <!-- 步行+跑步距离 -->
+  <Record type="HKQuantityTypeIdentifierDistanceWalkingRunning"
+           unit="km"
+           value="5.2"
+           startDate="2024-01-01 07:00:00 +0800"
+           endDate="2024-01-01 07:30:00 +0800"
+           sourceName="Apple Watch"
+           HKObjectUUID="test-dist-001"/>
+
+  <!-- 活动能量 -->
+  <Record type="HKQuantityTypeIdentifierActiveEnergyBurned"
+           unit="kcal"
+           value="420"
+           startDate="2024-01-01 07:00:00 +0800"
+           endDate="2024-01-01 07:30:00 +0800"
+           sourceName="Apple Watch"
+           HKObjectUUID="test-active-energy-001"/>
+
+  <!-- 基础能量 -->
+  <Record type="HKQuantityTypeIdentifierBasalEnergyBurned"
+           unit="kcal"
+           value="1800"
+           startDate="2024-01-01 00:00:00 +0800"
+           endDate="2024-01-01 23:59:59 +0800"
+           sourceName="iPhone"
+           HKObjectUUID="test-basal-energy-001"/>
+
+  <!-- 站立时间 -->
+  <Record type="HKQuantityTypeIdentifierAppleStandTime"
+           unit="min"
+           value="8"
+           startDate="2024-01-01 00:00:00 +0800"
+           endDate="2024-01-01 23:59:59 +0800"
+           sourceName="Apple Watch"
+           HKObjectUUID="test-stand-001"/>
+
+  <!-- 爬楼层数 -->
+  <Record type="HKQuantityTypeIdentifierFlightsClimbed"
+           unit="count"
+           value="12"
+           startDate="2024-01-01 00:00:00 +0800"
+           endDate="2024-01-01 23:59:59 +0800"
+           sourceName="Apple Watch"
+           HKObjectUUID="test-flights-001"/>
+
+  <!-- 锻炼时间 -->
+  <Record type="HKQuantityTypeIdentifierAppleExerciseTime"
+           unit="min"
+           value="30"
+           startDate="2024-01-01 07:00:00 +0800"
+           endDate="2024-01-01 07:30:00 +0800"
+           sourceName="Apple Watch"
+           HKObjectUUID="test-exercise-001"/>
+
+  <!-- HRV -->
+  <Record type="HKQuantityTypeIdentifierHeartRateVariabilitySDNN"
+           unit="ms"
+           value="42.5"
+           startDate="2024-01-01 08:00:00 +0800"
+           endDate="2024-01-01 08:00:00 +0800"
+           sourceName="Apple Watch"
+           HKObjectUUID="test-hrv-001"/>
+
+  <!-- 血氧 -->
+  <Record type="HKQuantityTypeIdentifierOxygenSaturation"
+           unit=""
+           value="0.98"
+           startDate="2024-01-01 09:00:00 +0800"
+           endDate="2024-01-01 09:00:00 +0800"
+           sourceName="Apple Watch"
+           HKObjectUUID="test-spo2-001"/>
+
+  <!-- 体温 -->
+  <Record type="HKQuantityTypeIdentifierBodyTemperature"
+           unit="degC"
+           value="36.8"
+           startDate="2024-01-01 07:00:00 +0800"
+           endDate="2024-01-01 07:00:00 +0800"
+           sourceName="Thermo"
+           HKObjectUUID="test-temp-001"/>
+
+  <!-- 呼吸频率 -->
+  <Record type="HKQuantityTypeIdentifierRespiratoryRate"
+           unit="count/min"
+           value="16"
+           startDate="2024-01-01 08:00:00 +0800"
+           endDate="2024-01-01 08:00:00 +0800"
+           sourceName="Apple Watch"
+           HKObjectUUID="test-rr-001"/>
+
+  <!-- 噪声暴露 -->
+  <Record type="HKQuantityTypeIdentifierEnvironmentalAudioExposure"
+           unit="dB"
+           value="65"
+           startDate="2024-01-01 12:00:00 +0800"
+           endDate="2024-01-01 12:30:00 +0800"
+           sourceName="iPhone"
+           HKObjectUUID="test-noise-001"/>
+
+  <!-- 睡眠：在床 -->
+  <Record type="HKCategoryTypeIdentifierSleepAnalysis"
+           value="HKCategoryValueSleepAnalysisInBed"
+           startDate="2024-01-01 23:00:00 +0800"
+           endDate="2024-01-02 07:30:00 +0800"
+           sourceName="Sleep Cycle"
+           HKObjectUUID="test-sleep-inbed-001"/>
+
+  <!-- 睡眠：核心睡眠 -->
+  <Record type="HKCategoryTypeIdentifierSleepAnalysis"
+           value="HKCategoryValueSleepAnalysisAsleepCore"
+           startDate="2024-01-01 23:30:00 +0800"
+           endDate="2024-01-02 01:00:00 +0800"
+           sourceName="Sleep Cycle"
+           HKObjectUUID="test-sleep-core-001"/>
+
+  <!-- 睡眠：深度睡眠 -->
+  <Record type="HKCategoryTypeIdentifierSleepAnalysis"
+           value="HKCategoryValueSleepAnalysisAsleepDeep"
+           startDate="2024-01-02 01:00:00 +0800"
+           endDate="2024-01-02 03:00:00 +0800"
+           sourceName="Sleep Cycle"
+           HKObjectUUID="test-sleep-deep-001"/>
+
+  <!-- 睡眠：REM -->
+  <Record type="HKCategoryTypeIdentifierSleepAnalysis"
+           value="HKCategoryValueSleepAnalysisAsleepREM"
+           startDate="2024-01-02 03:00:00 +0800"
+           endDate="2024-01-02 07:00:00 +0800"
+           sourceName="Sleep Cycle"
+           HKObjectUUID="test-sleep-rem-001"/>
+
+  <!-- 睡眠：清醒 -->
+  <Record type="HKCategoryTypeIdentifierSleepAnalysis"
+           value="HKCategoryValueSleepAnalysisAwake"
+           startDate="2024-01-02 07:00:00 +0800"
+           endDate="2024-01-02 07:30:00 +0800"
+           sourceName="Sleep Cycle"
+           HKObjectUUID="test-sleep-awake-001"/>
+
+  <!-- ECG -->
+  <Record type="HKCategoryTypeIdentifierElectrocardiogram"
+           value="HKECGClassificationSinusRhythm"
+           startDate="2024-01-01 08:00:00 +0800"
+           endDate="2024-01-01 08:00:30 +0800"
+           sourceName="Apple Watch"
+           HKObjectUUID="test-ecg-001">
+    <MetadataEntry key="HKMetadataKeyECGHeartRate" value="72"/>
+  </Record>
+
+  <!-- 正念 -->
+  <Record type="HKCategoryTypeIdentifierMindfulSession"
+           startDate="2024-01-01 20:00:00 +0800"
+           endDate="2024-01-01 20:15:00 +0800"
+           sourceName="Mindfulness"
+           HKObjectUUID="test-mindfulness-001"/>
+
+  <!-- 运动记录 -->
+  <Workout workoutActivityType="HKWorkoutActivityTypeRunning"
+           duration="1800"
+           durationUnit="s"
+           startDate="2024-01-01 07:00:00 +0800"
+           endDate="2024-01-01 07:30:00 +0800"
+           sourceName="Apple Watch">
+    <Statistics type="HKQuantityTypeIdentifierDistanceWalkingRunning"
+                unit="km"
+                sum="5.2"/>
+    <Statistics type="HKQuantityTypeIdentifierActiveEnergyBurned"
+                unit="kcal"
+                sum="420"/>
+  </Workout>
+
+</HealthData>
