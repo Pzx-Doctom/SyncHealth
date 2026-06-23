@@ -10,24 +10,40 @@ from app.models.vitals import BloodOxygenSample
 from app.schemas.dashboard import DashboardSummary, DashboardTrends, HealthScore, TrendDataPoint
 
 
+async def _get_step_source_filter(db: AsyncSession, user_id: int, time_start: datetime, time_end: datetime | None = None) -> str | None:
+    """检测时间范围内是否有 Apple Watch 步数数据，有则只取 Watch，无则不限制来源"""
+    query = select(func.count()).select_from(ActivitySample).where(
+        ActivitySample.user_id == user_id,
+        ActivitySample.metric_type == "steps",
+        ActivitySample.source_device.ilike("%watch%"),
+        ActivitySample.recorded_at >= time_start,
+    )
+    if time_end:
+        query = query.where(ActivitySample.recorded_at < time_end)
+    count = (await db.execute(query)).scalar() or 0
+    return "%watch%" if count > 0 else None
+
+
 async def get_dashboard_summary(db: AsyncSession, user_id: int) -> DashboardSummary:
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    async def _sum_activity(metric: str) -> float:
-        result = await db.execute(
-            select(func.sum(ActivitySample.value)).where(
-                ActivitySample.user_id == user_id,
-                ActivitySample.metric_type == metric,
-                ActivitySample.recorded_at >= today_start,
-            )
+    async def _sum_activity(metric: str, source_device: str | None = None) -> float:
+        query = select(func.sum(ActivitySample.value)).where(
+            ActivitySample.user_id == user_id,
+            ActivitySample.metric_type == metric,
+            ActivitySample.recorded_at >= today_start,
         )
+        if source_device:
+            query = query.where(ActivitySample.source_device.ilike(source_device))
+        result = await db.execute(query)
         return result.scalar() or 0.0
 
-    steps = await _sum_activity("steps")
+    step_source = await _get_step_source_filter(db, user_id, today_start)
+    steps = await _sum_activity("steps", step_source)
     active_energy = await _sum_activity("active_energy_kcal")
     resting_energy = await _sum_activity("resting_energy_kcal")
-    distance = await _sum_activity("distance_meters")
+    distance = await _sum_activity("distance_meters", step_source)
     flights = await _sum_activity("flights_climbed")
     stand = await _sum_activity("stand_hours")
 
@@ -111,15 +127,17 @@ async def get_dashboard_trends(db: AsyncSession, user_id: int, period: str = "7d
         day_end = day_start + timedelta(days=1)
         date_str = day_start.strftime("%Y-%m-%d")
 
-        # Steps
-        step_r = await db.execute(
-            select(func.sum(ActivitySample.value)).where(
-                ActivitySample.user_id == user_id,
-                ActivitySample.metric_type == "steps",
-                ActivitySample.recorded_at >= day_start,
-                ActivitySample.recorded_at < day_end,
-            )
+        # Steps（当天唯一来源过滤，与 summary 一致）
+        step_source = await _get_step_source_filter(db, user_id, day_start, day_end)
+        step_q = select(func.sum(ActivitySample.value)).where(
+            ActivitySample.user_id == user_id,
+            ActivitySample.metric_type == "steps",
+            ActivitySample.recorded_at >= day_start,
+            ActivitySample.recorded_at < day_end,
         )
+        if step_source:
+            step_q = step_q.where(ActivitySample.source_device.ilike(step_source))
+        step_r = await db.execute(step_q)
         trends.steps.append(TrendDataPoint(date=date_str, value=step_r.scalar()))
 
         # Avg heart rate
@@ -175,16 +193,19 @@ async def get_health_score(db: AsyncSession, user_id: int) -> HealthScore:
     week_ago = now - timedelta(days=7)
 
     # Activity score (based on steps: 10000 = 100)
-    # 两步查询：先查每日总步数，再在 Python 中求平均（避免 SQLite 嵌套聚合不兼容）
-    daily_steps_r = await db.execute(
+    step_source = await _get_step_source_filter(db, user_id, week_ago)
+    daily_steps_q = (
         select(func.sum(ActivitySample.value).label("daily_steps"))
         .where(
             ActivitySample.user_id == user_id,
             ActivitySample.metric_type == "steps",
             ActivitySample.recorded_at >= week_ago,
         )
-        .group_by(func.date(ActivitySample.recorded_at))
     )
+    if step_source:
+        daily_steps_q = daily_steps_q.where(ActivitySample.source_device.ilike(step_source))
+    daily_steps_q = daily_steps_q.group_by(func.date(ActivitySample.recorded_at))
+    daily_steps_r = await db.execute(daily_steps_q)
     daily_steps_rows = daily_steps_r.all()
     if daily_steps_rows:
         avg_steps = sum(r[0] or 0 for r in daily_steps_rows) / len(daily_steps_rows)
