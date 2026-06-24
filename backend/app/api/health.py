@@ -52,7 +52,7 @@ def _paginate(items, total, page, page_size, schema_class):
 async def get_heart_rates(
     start: datetime | None = None, end: datetime | None = None,
     measurement_type: str | None = None,
-    page: int = Query(1, ge=1), page_size: int = Query(100, ge=1, le=1000),
+    page: int = Query(1, ge=1), page_size: int = Query(100, ge=1, le=5000),
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
     items, total = await query_heart_rates(db, current_user.id, start, end, measurement_type, page, page_size)
