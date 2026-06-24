@@ -240,6 +240,8 @@ class CDAHealthXMLParser:
             converted = convert_unit(value, "km", "m")
         elif metric_type in ("active_energy_kcal", "resting_energy_kcal") and unit == "kJ":
             converted = convert_unit(value, "kJ", "kcal")
+        elif metric_type == "stand_hours" and unit == "min":
+            converted = value / 60
         duration = None
         start_dt = parse_cda_datetime(start_str)
         end_dt = parse_cda_datetime(end_str)
@@ -514,6 +516,8 @@ class LegacyHealthXMLParser:
             converted_value = convert_unit(value, "km", "m")
         elif metric_type in ("active_energy_kcal", "resting_energy_kcal") and unit == "kJ":
             converted_value = convert_unit(value, "kJ", "kcal")
+        elif metric_type == "stand_hours" and unit == "min":
+            converted_value = value / 60
         duration = parse_duration_seconds(attrs.get("startDate", ""), attrs.get("endDate", ""))
         return {
             "type": "activity", "_counter_key": "activity_samples",

@@ -44,7 +44,8 @@ async def get_dashboard_summary(db: AsyncSession, user_id: int) -> DashboardSumm
     resting_energy = await _sum_activity("resting_energy_kcal")
     distance = await _sum_activity("distance_meters", watch_source)
     flights = await _sum_activity("flights_climbed")
-    stand = await _sum_activity("stand_hours")
+    stand_raw = await _sum_activity("stand_hours")
+    stand = stand_raw / 60 if stand_raw > 24 else stand_raw  # 兼容旧数据（分钟→小时）
 
     # Average heart rate today
     hr_result = await db.execute(
