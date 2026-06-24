@@ -60,6 +60,7 @@ function formatNumber(n?: number | null) {
             <span class="metric-label">睡眠 小时</span>
           </div>
         </div>
+        <!-- 血氧卡片：暂隐藏，需要时取消注释即可
         <div class="metric-card card">
           <div class="metric-icon" style="background:#ECFDF5;color:#10B981">🫁</div>
           <div class="metric-body">
@@ -67,6 +68,7 @@ function formatNumber(n?: number | null) {
             <span class="metric-label">血氧 %</span>
           </div>
         </div>
+        -->
         <div class="metric-card card">
           <div class="metric-icon" style="background:#FFF7ED;color:#F59E0B">🔥</div>
           <div class="metric-body">

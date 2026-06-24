@@ -10,11 +10,10 @@ from app.models.vitals import BloodOxygenSample
 from app.schemas.dashboard import DashboardSummary, DashboardTrends, HealthScore, TrendDataPoint
 
 
-async def _get_step_source_filter(db: AsyncSession, user_id: int, time_start: datetime, time_end: datetime | None = None) -> str | None:
-    """检测时间范围内是否有 Apple Watch 步数数据，有则只取 Watch，无则不限制来源"""
+async def _get_watch_filter(db: AsyncSession, user_id: int, time_start: datetime, time_end: datetime | None = None) -> str | None:
+    """检测时间范围内是否有 Apple Watch 的 activity 数据（步数/能量/距离等），有则只取 Watch"""
     query = select(func.count()).select_from(ActivitySample).where(
         ActivitySample.user_id == user_id,
-        ActivitySample.metric_type == "steps",
         ActivitySample.source_device.ilike("%watch%"),
         ActivitySample.recorded_at >= time_start,
     )
@@ -39,11 +38,11 @@ async def get_dashboard_summary(db: AsyncSession, user_id: int) -> DashboardSumm
         result = await db.execute(query)
         return result.scalar() or 0.0
 
-    step_source = await _get_step_source_filter(db, user_id, today_start)
-    steps = await _sum_activity("steps", step_source)
-    active_energy = await _sum_activity("active_energy_kcal")
+    watch_source = await _get_watch_filter(db, user_id, today_start)
+    steps = await _sum_activity("steps", watch_source)
+    active_energy = await _sum_activity("active_energy_kcal", watch_source)
     resting_energy = await _sum_activity("resting_energy_kcal")
-    distance = await _sum_activity("distance_meters", step_source)
+    distance = await _sum_activity("distance_meters", watch_source)
     flights = await _sum_activity("flights_climbed")
     stand = await _sum_activity("stand_hours")
 
@@ -57,20 +56,22 @@ async def get_dashboard_summary(db: AsyncSession, user_id: int) -> DashboardSumm
     )
     avg_hr = hr_result.scalar()
 
-    # Resting heart rate (latest)
+    # Resting heart rate (latest today)
     rhr_result = await db.execute(
         select(HeartRate.bpm).where(
             HeartRate.user_id == user_id,
             HeartRate.measurement_type == "resting_heart_rate",
+            HeartRate.recorded_at >= today_start,
         ).order_by(HeartRate.recorded_at.desc()).limit(1)
     )
     resting_hr = rhr_result.scalar()
 
-    # Walking heart rate average (latest)
+    # Walking heart rate average (latest today)
     whr_result = await db.execute(
         select(HeartRate.bpm).where(
             HeartRate.user_id == user_id,
             HeartRate.measurement_type == "walking_heart_rate_average",
+            HeartRate.recorded_at >= today_start,
         ).order_by(HeartRate.recorded_at.desc()).limit(1)
     )
     walking_hr = whr_result.scalar()
@@ -127,16 +128,16 @@ async def get_dashboard_trends(db: AsyncSession, user_id: int, period: str = "7d
         day_end = day_start + timedelta(days=1)
         date_str = day_start.strftime("%Y-%m-%d")
 
-        # Steps（当天唯一来源过滤，与 summary 一致）
-        step_source = await _get_step_source_filter(db, user_id, day_start, day_end)
+        # Steps & energy（Watch 优先，避免多源重复）
+        watch_source = await _get_watch_filter(db, user_id, day_start, day_end)
         step_q = select(func.sum(ActivitySample.value)).where(
             ActivitySample.user_id == user_id,
             ActivitySample.metric_type == "steps",
             ActivitySample.recorded_at >= day_start,
             ActivitySample.recorded_at < day_end,
         )
-        if step_source:
-            step_q = step_q.where(ActivitySample.source_device.ilike(step_source))
+        if watch_source:
+            step_q = step_q.where(ActivitySample.source_device.ilike(watch_source))
         step_r = await db.execute(step_q)
         trends.steps.append(TrendDataPoint(date=date_str, value=step_r.scalar()))
 
@@ -164,14 +165,15 @@ async def get_dashboard_trends(db: AsyncSession, user_id: int, period: str = "7d
         trends.sleep.append(TrendDataPoint(date=date_str, value=round(sleep_val / 60, 1) if sleep_val else None))
 
         # Active energy
-        energy_r = await db.execute(
-            select(func.sum(ActivitySample.value)).where(
-                ActivitySample.user_id == user_id,
-                ActivitySample.metric_type == "active_energy_kcal",
-                ActivitySample.recorded_at >= day_start,
-                ActivitySample.recorded_at < day_end,
-            )
+        energy_q = select(func.sum(ActivitySample.value)).where(
+            ActivitySample.user_id == user_id,
+            ActivitySample.metric_type == "active_energy_kcal",
+            ActivitySample.recorded_at >= day_start,
+            ActivitySample.recorded_at < day_end,
         )
+        if watch_source:
+            energy_q = energy_q.where(ActivitySample.source_device.ilike(watch_source))
+        energy_r = await db.execute(energy_q)
         trends.active_energy.append(TrendDataPoint(date=date_str, value=energy_r.scalar()))
 
         # SpO2
@@ -193,7 +195,7 @@ async def get_health_score(db: AsyncSession, user_id: int) -> HealthScore:
     week_ago = now - timedelta(days=7)
 
     # Activity score (based on steps: 10000 = 100)
-    step_source = await _get_step_source_filter(db, user_id, week_ago)
+    watch_source = await _get_watch_filter(db, user_id, week_ago)
     daily_steps_q = (
         select(func.sum(ActivitySample.value).label("daily_steps"))
         .where(
@@ -202,8 +204,8 @@ async def get_health_score(db: AsyncSession, user_id: int) -> HealthScore:
             ActivitySample.recorded_at >= week_ago,
         )
     )
-    if step_source:
-        daily_steps_q = daily_steps_q.where(ActivitySample.source_device.ilike(step_source))
+    if watch_source:
+        daily_steps_q = daily_steps_q.where(ActivitySample.source_device.ilike(watch_source))
     daily_steps_q = daily_steps_q.group_by(func.date(ActivitySample.recorded_at))
     daily_steps_r = await db.execute(daily_steps_q)
     daily_steps_rows = daily_steps_r.all()
