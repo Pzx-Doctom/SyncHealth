@@ -3,12 +3,23 @@ import { ref } from 'vue'
 import { aiApi } from '../api/ai'
 import type { ChatMessageOut, ChatSessionOut } from '../types/ai'
 
+interface StreamMessage {
+  id: number
+  session_id: number
+  role: 'user' | 'assistant'
+  content: string
+  created_at: string
+  dify_references?: any[] | null
+  streaming?: boolean  // 是否正在流式输出
+}
+
 export const useAIStore = defineStore('ai', () => {
   const sessions = ref<ChatSessionOut[]>([])
   const currentSessionId = ref<number | null>(null)
-  const messages = ref<ChatMessageOut[]>([])
+  const messages = ref<StreamMessage[]>([])
   const loading = ref(false)
-  const streamingContent = ref('')
+
+  let ws: WebSocket | null = null
 
   async function fetchSessions() {
     const res = await aiApi.getSessions()
@@ -16,47 +27,103 @@ export const useAIStore = defineStore('ai', () => {
   }
 
   async function loadSession(sessionId: number) {
+    closeWs()
     currentSessionId.value = sessionId
     const res = await aiApi.getSessionMessages(sessionId)
-    messages.value = res.data
+    messages.value = res.data.map(m => ({ ...m, streaming: false }))
+  }
+
+  function getWsUrl(): string {
+    const token = localStorage.getItem('access_token') || ''
+    // WebSocket 直连后端，不受 CORS 限制，避免 Vite 代理转发 WebSocket 的不确定性
+    return `ws://127.0.0.1:8000/api/v1/ai/chat/ws?token=${token}`
+  }
+
+  function closeWs() {
+    if (ws) {
+      ws.close()
+      ws = null
+    }
   }
 
   async function sendMessage(message: string, agentId?: number) {
     loading.value = true
-    streamingContent.value = ''
 
-    // Add user message to UI immediately
+    // 添加用户消息
     messages.value.push({
       id: Date.now(),
       session_id: currentSessionId.value || 0,
       role: 'user',
       content: message,
       created_at: new Date().toISOString(),
+      streaming: false,
     })
 
-    try {
-      const res = await aiApi.chat(message, currentSessionId.value || undefined, agentId)
-      currentSessionId.value = res.data.session_id
+    // 创建占位 assistant 消息
+    const assistantId = Date.now() + 1
+    const streamingMsg: StreamMessage = {
+      id: assistantId,
+      session_id: currentSessionId.value || 0,
+      role: 'assistant',
+      content: '',
+      created_at: new Date().toISOString(),
+      streaming: true,
+    }
+    messages.value.push(streamingMsg)
 
-      messages.value.push({
-        id: Date.now() + 1,
-        session_id: res.data.session_id,
-        role: 'assistant',
-        content: res.data.response,
-        created_at: new Date().toISOString(),
-        dify_references: res.data.dify_references?.length ? res.data.dify_references : null,
-      })
+    // 通过 WebSocket 发送消息
+    closeWs()
+    ws = new WebSocket(getWsUrl())
 
-      await fetchSessions()
-    } finally {
+    ws.onopen = () => {
+      ws!.send(JSON.stringify({
+        message,
+        session_id: currentSessionId.value || undefined,
+        agent_id: agentId,
+      }))
+    }
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data)
+      if (data.type === 'token') {
+        // 流式追加 token
+        streamingMsg.content += data.content
+      } else if (data.type === 'done') {
+        // 完成
+        streamingMsg.streaming = false
+        streamingMsg.session_id = data.session_id
+        if (data.dify_references?.length) {
+          streamingMsg.dify_references = data.dify_references
+        }
+        currentSessionId.value = data.session_id
+        loading.value = false
+        closeWs()
+        fetchSessions()
+      }
+    }
+
+    ws.onerror = () => {
+      streamingMsg.streaming = false
+      streamingMsg.content = streamingMsg.content || '连接失败，请重试'
       loading.value = false
+      closeWs()
+    }
+
+    ws.onclose = () => {
+      if (streamingMsg.streaming) {
+        streamingMsg.streaming = false
+        if (!streamingMsg.content) {
+          streamingMsg.content = '连接已断开'
+        }
+        loading.value = false
+      }
     }
   }
 
   function newChat() {
+    closeWs()
     currentSessionId.value = null
     messages.value = []
-    streamingContent.value = ''
   }
 
   async function deleteSession(sessionId: number) {
@@ -68,7 +135,7 @@ export const useAIStore = defineStore('ai', () => {
   }
 
   return {
-    sessions, currentSessionId, messages, loading, streamingContent,
+    sessions, currentSessionId, messages, loading,
     fetchSessions, loadSession, sendMessage, newChat, deleteSession,
   }
 })

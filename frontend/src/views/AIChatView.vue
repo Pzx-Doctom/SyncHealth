@@ -1,13 +1,33 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useAIStore } from '../stores/ai'
+import { marked } from 'marked'
+
+// 配置 marked
+marked.setOptions({ breaks: true, gfm: true })
 
 const aiStore = useAIStore()
 const messageInput = ref('')
 const messagesContainer = ref<HTMLElement | null>(null)
+const markdownCache = new Map<string, string>()
+
+function renderMarkdown(text: string): string {
+  if (!text) return ''
+  // 简单缓存，避免每次重渲染
+  const key = text.slice(0, 200) + text.length
+  if (markdownCache.has(key)) return markdownCache.get(key)!
+  const html = marked.parse(text) as string
+  if (markdownCache.size > 100) markdownCache.clear()
+  markdownCache.set(key, html)
+  return html
+}
 
 onMounted(() => {
   aiStore.fetchSessions()
+})
+
+onUnmounted(() => {
+  // store 在 newChat 时会关闭 ws，这里兜底
 })
 
 async function sendMessage() {
@@ -25,6 +45,13 @@ function scrollToBottom() {
   }
 }
 
+// 新消息或流式内容变化时自动滚动
+watch(() => aiStore.messages.length, () => nextTick(scrollToBottom))
+watch(() => {
+  const msgs = aiStore.messages
+  return msgs.length ? msgs[msgs.length - 1].content.length : 0
+}, () => nextTick(scrollToBottom))
+
 function selectSession(sessionId: number) {
   aiStore.loadSession(sessionId)
 }
@@ -40,7 +67,7 @@ function toggleRef(el: EventTarget | null) {
 
 <template>
   <div class="chat-layout">
-    <!-- Sidebar: Sessions -->
+    <!-- Sidebar -->
     <div class="chat-sidebar">
       <button class="btn btn-primary" style="width:100%;margin-bottom:12px" @click="aiStore.newChat()">
         + 新对话
@@ -56,7 +83,7 @@ function toggleRef(el: EventTarget | null) {
       </div>
     </div>
 
-    <!-- Main Chat Area -->
+    <!-- Main Chat -->
     <div class="chat-main">
       <div class="messages" ref="messagesContainer">
         <div v-if="aiStore.messages.length === 0" class="chat-welcome">
@@ -77,7 +104,12 @@ function toggleRef(el: EventTarget | null) {
         <div v-for="msg in aiStore.messages" :key="msg.id" :class="['message', msg.role]">
           <div class="message-avatar">{{ msg.role === 'user' ? '👤' : '🤖' }}</div>
           <div class="message-content">
-            <div class="message-text">{{ msg.content }}</div>
+            <!-- 用户消息直接显示文本 -->
+            <div v-if="msg.role === 'user'" class="message-text">{{ msg.content }}</div>
+            <!-- AI 消息用 Markdown 渲染 -->
+            <div v-else class="markdown-body" v-html="renderMarkdown(msg.content)"></div>
+            <!-- 流式输出光标 -->
+            <span v-if="msg.streaming" class="streaming-cursor">|</span>
             <!-- RAG References -->
             <div v-if="msg.role === 'assistant' && msg.dify_references?.length" class="rag-section">
               <span class="rag-badge" @click="toggleRef($event.currentTarget)">📚 知识库引用 ({{ msg.dify_references.length }})</span>
@@ -95,10 +127,6 @@ function toggleRef(el: EventTarget | null) {
               </div>
             </div>
           </div>
-        </div>
-        <div v-if="aiStore.loading" class="message assistant">
-          <div class="message-avatar">🤖</div>
-          <div class="message-content"><div class="typing">思考中...</div></div>
         </div>
       </div>
 
@@ -169,7 +197,7 @@ function toggleRef(el: EventTarget | null) {
   display: flex;
   gap: 12px;
   margin-bottom: 20px;
-  max-width: 800px;
+  max-width: 860px;
 }
 .message.user { flex-direction: row-reverse; margin-left: auto; }
 .message-avatar { font-size: 24px; flex-shrink: 0; }
@@ -179,10 +207,86 @@ function toggleRef(el: EventTarget | null) {
   border-radius: 12px;
   font-size: 14px;
   line-height: 1.7;
-  white-space: pre-wrap;
+  min-width: 0;
 }
 .message.user .message-content { background: var(--color-primary); color: white; }
-.typing { color: var(--color-text-secondary); font-style: italic; }
+.message-text { white-space: pre-wrap; }
+
+/* 流式光标 */
+.streaming-cursor {
+  display: inline;
+  color: var(--color-primary);
+  font-weight: 700;
+  animation: blink 1s step-end infinite;
+}
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* Markdown 渲染样式 */
+.markdown-body :deep(h1), .markdown-body :deep(h2), .markdown-body :deep(h3) {
+  margin: 12px 0 6px;
+  font-weight: 600;
+}
+.markdown-body :deep(h1) { font-size: 1.3em; }
+.markdown-body :deep(h2) { font-size: 1.15em; }
+.markdown-body :deep(h3) { font-size: 1.05em; }
+
+.markdown-body :deep(p) { margin: 6px 0; }
+.markdown-body :deep(ul), .markdown-body :deep(ol) { padding-left: 20px; margin: 6px 0; }
+.markdown-body :deep(li) { margin: 2px 0; }
+
+.markdown-body :deep(code) {
+  background: rgba(0,0,0,0.06);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.9em;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.markdown-body :deep(pre) {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  padding: 12px 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 10px 0;
+}
+.markdown-body :deep(pre code) {
+  background: none;
+  padding: 0;
+  font-size: 0.85em;
+}
+
+.markdown-body :deep(table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 10px 0;
+  font-size: 13px;
+}
+.markdown-body :deep(th), .markdown-body :deep(td) {
+  border: 1px solid var(--color-border);
+  padding: 8px 12px;
+  text-align: left;
+}
+.markdown-body :deep(th) {
+  background: rgba(0,0,0,0.03);
+  font-weight: 600;
+}
+
+.markdown-body :deep(blockquote) {
+  border-left: 3px solid var(--color-primary);
+  padding-left: 12px;
+  margin: 8px 0;
+  color: var(--color-text-secondary);
+}
+
+.markdown-body :deep(hr) {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 12px 0;
+}
+
+.markdown-body :deep(strong) { font-weight: 700; }
 
 /* RAG References */
 .rag-section { margin-top: 10px; border-top: 1px solid #e5e7eb; padding-top: 8px; }
@@ -210,30 +314,10 @@ function toggleRef(el: EventTarget | null) {
 }
 .rag-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
 .rag-doc { font-weight: 600; color: #374151; }
-.rag-score {
-  font-size: 11px;
-  padding: 1px 6px;
-  border-radius: 10px;
-  background: #dbeafe;
-  color: #1d4ed8;
-  font-weight: 500;
-}
+.rag-score { font-size: 11px; padding: 1px 6px; border-radius: 10px; background: #dbeafe; color: #1d4ed8; font-weight: 500; }
 .rag-keywords { margin-bottom: 4px; display: flex; gap: 4px; flex-wrap: wrap; }
-.rag-kw {
-  font-size: 11px;
-  padding: 1px 6px;
-  border-radius: 3px;
-  background: #fef3c7;
-  color: #92400e;
-}
-.rag-content {
-  color: #6b7280;
-  line-height: 1.5;
-  max-height: 80px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: pre-wrap;
-}
+.rag-kw { font-size: 11px; padding: 1px 6px; border-radius: 3px; background: #fef3c7; color: #92400e; }
+.rag-content { color: #6b7280; line-height: 1.5; max-height: 80px; overflow: hidden; text-overflow: ellipsis; white-space: pre-wrap; }
 
 .chat-input-area {
   padding: 16px 32px;
