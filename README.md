@@ -183,6 +183,99 @@ AI_TEMPERATURE=0.7
 | **多端协同** | 移动端采集、后端存储与 AI 推理、前端可视化，三端通过 REST + WebSocket 闭环 |
 | **流式输出** | WebSocket + HTTP 双通道，支持实时逐 token 推流 |
 
+---
+
+## MedAgent Hub — 多智能体医疗健康协作系统
+
+MedAgent Hub 是 SyncHealth 的**独立子应用**（位于 `medagent/` 目录），基于 **LangChain + LangGraph** 框架实现 4 个专职 Agent 的协作编排，提供从可穿戴数据洞察、报告解读到用药管理的全方位 AI 健康服务。
+
+### 架构概览
+
+```
+SyncHealth 主项目                       MedAgent Hub（独立应用）
+┌──────────────────┐     MCP Protocol     ┌────────────────────────────┐
+│  FastAPI Backend │◄────────────────────│  FastAPI + LangGraph        │
+│  健康数据 + Dify  │                      │  4-Agent 编排 + 长期记忆    │
+│  SQLite          │                      │  ChromaDB + SQLite          │
+└──────────────────┘                      └────────────────────────────┘
+        ▲                                             ▲
+        │             WebSocket 流式事件               │
+        └───────────── Frontend (Vue3) ───────────────┘
+```
+
+**解耦设计**：MedAgent Hub 通过 **MCP（Model Context Protocol）** 从 SyncHealth backend 获取健康数据，而非直接访问数据库，实现两个应用的完全解耦。
+
+### 4 个 Agent
+
+| Agent | 职责 | 工具 |
+|-------|------|------|
+| 🧭 **Triage**（分诊路由） | 意图识别、紧急度评估、Agent 调度（纯推理，无工具） | 无 |
+| 🏃 **健康教练** | 可穿戴数据洞察、生活方式建议、轻度症状分析 | 心率趋势、睡眠分析、活动摘要、健康评分、运动历史、健身知识、附近医疗 |
+| 📋 **报告解读** | OCR 体检报告、指标对比、趋势分析、就医建议 | 报告 OCR、指标参考、历史对比、术语解释、健康事件、附近医疗 |
+| 💊 **用药管理** | 药盒 OCR、药品查询、相互作用检查、OTC 推荐 | 药盒 OCR、药品查询、相互作用、OTC 推荐、用药提醒、附近医疗 |
+
+**协作机制**：
+- 所有消息先经 Triage 分诊，再路由到对应专家 Agent
+- 专家 Agent 可通过 `reroute` 机制回退到 Triage 重新路由（上限 5 次循环）
+- 紧急情况直接跳转紧急处置，不经过专家 Agent
+- `search_nearby_medical` 是共享工具，被所有专家 Agent 调用
+
+### 长期记忆系统
+
+- **用户画像**：存储在 SQLite，包含年龄、慢性病史、过敏史、用药列表、健康目标
+- **对话摘要**：`ConversationSummaryBufferMemory`，压缩历史对话要点
+- **健康事件向量存储**：ChromaDB 语义检索，支持跨对话记忆（如"上次说的那个头疼后来怎么样了"）
+
+### 错误处理
+
+| 错误类型 | 处理方式 |
+|---------|---------|
+| LLM 调用失败 | 3 次重试 + 指数退避（1s→2s→4s）|
+| Tool 执行超时 | 15 秒超时 + 返回部分结果 |
+| MCP 连接断开 | 3 次重连 + 降级本地缓存 |
+| JSON 解析失败 | 正则最大努力解析 + 兜底路由 |
+| 循环路由超限 | MAX_LOOPS=5 强制终止 |
+
+### 启动 MedAgent Hub
+
+```bash
+# 1. 先启动 SyncHealth backend（提供 MCP 健康数据）
+cd backend
+uvicorn app.main:app --reload --port 8000
+
+# 2. 启动 MedAgent Hub
+cd medagent
+pip install -e ".[dev]"
+
+# 配置环境变量
+cp .env.example .env
+# 编辑 .env，填入 AI_API_KEY、AMAP_API_KEY、SYNCHEALTH_BASE_URL 等
+
+# 启动
+uvicorn app.main:app --reload --port 8001
+```
+
+### WebSocket 事件协议
+
+客户端连接 `ws://localhost:8001/api/v1/chat/ws`，发送：
+```json
+{"message": "我最近睡不好", "session_id": null}
+```
+
+服务端推送事件：`token` | `agent_switch` | `tool_start` | `tool_result` | `memory_recall` | `thinking` | `done` | `error`
+
+### REST API 端点
+
+| 端点 | 说明 |
+|------|------|
+| `GET /api/v1/agents` | Agent 配置列表 |
+| `GET /api/v1/sessions` | 会话列表 |
+| `GET /api/v1/sessions/{id}/messages` | 会话消息历史 |
+| `GET /api/v1/memory/profile` | 用户健康画像 |
+| `PUT /api/v1/memory/profile` | 更新画像 |
+| `GET /api/v1/memory/timeline` | 健康事件时间线 |
+| `POST /api/v1/memory/search` | 记忆语义搜索 |
+
 ## License
 
 MIT

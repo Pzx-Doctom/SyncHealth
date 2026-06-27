@@ -1,0 +1,56 @@
+[project]
+name = "medagent-hub"
+version = "0.1.0"
+description = "MedAgent Hub - LangChain/LangGraph 多智能体医疗健康协作系统"
+requires-python = ">=3.11"
+dependencies = [
+    # Web 框架
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "websockets>=12.0",
+    "python-multipart>=0.0.9",
+
+    # 数据库
+    "sqlalchemy>=2.0.0",
+    "aiosqlite>=0.20.0",
+
+    # 配置与校验
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+
+    # LangChain / LangGraph
+    "langchain>=0.3.0",
+    "langchain-core>=0.3.0",
+    "langchain-openai>=0.2.0",
+    "langgraph>=0.2.0",
+    "langgraph-checkpoint-sqlite>=2.0.0",
+
+    # 向量存储（长期记忆）
+    "chromadb>=0.5.0",
+
+    # MCP 客户端
+    "mcp>=1.0.0",
+
+    # HTTP 客户端
+    "httpx>=0.27.0",
+
+    # 认证（复用 SyncHealth JWT）
+    "PyJWT>=2.8.0",
+
+    # 工具
+    "tenacity>=8.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
