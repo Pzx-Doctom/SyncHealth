@@ -1,5 +1,7 @@
 """MedAgent Hub 配置管理 - Pydantic Settings"""
+import os
 from pathlib import Path
+from dotenv import dotenv_values
 from pydantic_settings import BaseSettings
 
 
@@ -53,7 +55,18 @@ class Settings(BaseSettings):
         "http://localhost:3001",
     ]
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {
+        "env_file": str(Path(__file__).resolve().parent.parent / ".env"),
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",  # 允许未定义的 env var（如 LangSmith 的 LANGCHAIN_*）
+    }
 
 
 settings = Settings()
+
+# 将 LangSmith 相关变量同步到 os.environ（Pydantic Settings 只读不设置，LangSmith SDK 从 os.environ 读取）
+_env_path = Path(__file__).resolve().parent.parent / ".env"
+_env_values = dotenv_values(_env_path)
+for _k, _v in _env_values.items():
+    if _k.startswith("LANGCHAIN_") and _k not in os.environ:
+        os.environ[_k] = _v

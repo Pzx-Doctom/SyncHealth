@@ -53,6 +53,7 @@ class MCPClient:
                 base_url=self.base_url,
                 headers=headers,
                 timeout=10,
+                trust_env=False,  # 禁用系统代理（修复 Windows localhost 502 问题）
             )
 
     @retry(

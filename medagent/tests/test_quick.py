@@ -222,4 +222,18 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    import signal
+
+    def _handle_exit():
+        """强制退出（Windows asyncio Ctrl+C 兼容）"""
+        import os
+        os._exit(0)
+
+    # Windows 下 asyncio.run() 对 Ctrl+C 响应慢，注册 SIGINT 直接退出
+    signal.signal(signal.SIGINT, lambda sig, frame: _handle_exit())
+
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\n\n⚠️ 用户中断，正在退出...")
+        _handle_exit()

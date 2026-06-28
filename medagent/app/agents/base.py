@@ -1,8 +1,14 @@
 """Agent 基础类 + 共享 LLM 实例"""
 import functools
 import json
+import os
 import re
 from typing import Any, Optional
+
+# 禁用系统代理（修复 Windows 上 httpx trust_env 导致 LLM 调用 Connection error 的问题）
+# 必须在导入 httpx/openai 之前设置，否则代理配置已被读取
+os.environ.setdefault("NO_PROXY", "*")
+os.environ.setdefault("no_proxy", "*")
 
 import httpx
 from langchain_openai import ChatOpenAI

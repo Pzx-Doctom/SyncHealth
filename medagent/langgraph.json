@@ -1,0 +1,7 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "medagent": "./app/core/graph.py:build_studio_graph"
+  },
+  "env": ".env"
+}

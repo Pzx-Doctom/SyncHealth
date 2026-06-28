@@ -24,6 +24,7 @@ dependencies = [
     "langchain-openai>=0.2.0",
     "langgraph>=0.2.0",
     "langgraph-checkpoint-sqlite>=2.0.0",
+    "langsmith>=0.2.0",
 
     # 向量存储（长期记忆）
     "chromadb>=0.5.0",
@@ -45,6 +46,7 @@ dependencies = [
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
+    "langgraph-cli[inmem]>=0.1.0",
 ]
 
 [build-system]

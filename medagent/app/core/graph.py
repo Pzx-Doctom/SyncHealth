@@ -149,3 +149,12 @@ async def close_graph():
         await _checkpointer.conn.close()
         _checkpointer = None
     _compiled_graph = None
+
+
+def build_studio_graph():
+    """
+    为 LangGraph Studio 构建同步图（不带 async checkpointer）。
+    Studio 会自己管理 checkpointer。
+    """
+    graph = build_graph()
+    return graph.compile()
