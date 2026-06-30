@@ -44,7 +44,7 @@ GRAPH_NAME = "medagent"
 DEFAULT_USER_ID = "test_user_001"
 
 
-async def run_one(client, case: dict, index: int) -> dict:
+async def run_one(client, assistant_id: str, case: dict, index: int) -> dict:
     """执行单个测试案例"""
     title = case["title"]
     query = case["user_query"]
@@ -64,11 +64,11 @@ async def run_one(client, case: dict, index: int) -> dict:
         "messages": [],  # Studio 需要 messages 字段存在
     }
 
-    # 3. 调用图执行
+    # 3. 调用图执行（SDK 0.4.x 用 assistant_id 而非 assistant_key）
     try:
         result = await client.runs.wait(
             thread_id=thread["thread_id"],
-            assistant_key=GRAPH_NAME,
+            assistant_id=assistant_id,
             input=input_state,
         )
     except Exception as e:
@@ -126,9 +126,15 @@ async def main():
     # 连接 Studio
     try:
         client = get_client(url=STUDIO_URL)
-        # 测试连接
+        # 查询可用的 assistants（langgraph dev 会自动注册一个默认 assistant）
         assistants = await client.assistants.search()
-        print(f"✅ 已连接 Studio，可用 assistants: {[a['name'] for a in assistants]}")
+        if not assistants:
+            print(f"❌ Studio 没有可用的 assistant，请检查 langgraph.json 配置")
+            sys.exit(1)
+        # 取第一个 assistant（langgraph dev 默认会创建一个名为 "agent" 的 assistant）
+        assistant = assistants[0]
+        assistant_id = assistant["assistant_id"]
+        print(f"✅ 已连接 Studio，使用 assistant: {assistant.get('name', 'agent')} (id: {assistant_id[:8]}...)")
     except Exception as e:
         print(f"❌ 无法连接 Studio ({STUDIO_URL}): {e}")
         print("   请先运行: langgraph dev")
@@ -137,7 +143,7 @@ async def main():
     # 逐个执行
     results = []
     for i, case in enumerate(TEST_CASES, 1):
-        result = await run_one(client, case, i)
+        result = await run_one(client, assistant_id, case, i)
         results.append(result)
 
     # 汇总
