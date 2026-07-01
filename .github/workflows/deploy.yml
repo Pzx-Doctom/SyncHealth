@@ -1,4 +1,4 @@
-name: Deploy to Aliyun ECS
+name: Build & Deploy to Aliyun ECS
 
 on:
   push:
@@ -6,20 +6,76 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  # ============================================================
+  # Job 1: 在 GitHub 服务器上构建镜像，推送到 GHCR
+  # ============================================================
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
     steps:
-      - name: Deploy via SSH
+      - name: Checkout 代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 登录 GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 构建并推送 backend 镜像
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ghcr.io/pzx-doctom/synchealth-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 构建并推送 nginx 镜像（含前端构建）
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./nginx/Dockerfile
+          push: true
+          tags: ghcr.io/pzx-doctom/synchealth-nginx:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ============================================================
+  # Job 2: SSH 到阿里云 ECS，拉取镜像并启动服务
+  # ============================================================
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 部署到阿里云 ECS
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.ECS_HOST }}
           username: ${{ secrets.ECS_USER }}
           key: ${{ secrets.ECS_SSH_KEY }}
           script: |
+            set -e
+
+            # ---------- 确保项目已克隆 ----------
+            if [ ! -d "${{ secrets.ECS_PROJECT_PATH }}" ]; then
+              echo "克隆项目..."
+              git clone https://github.com/Pzx-Doctom/SyncHealth.git ${{ secrets.ECS_PROJECT_PATH }}
+            fi
+
             cd ${{ secrets.ECS_PROJECT_PATH }}
             git pull origin main
 
-            # 动态生成 .env.production
+            # ---------- 动态生成 .env.production ----------
             cat > .env.production << 'ENVEOF'
             APP_NAME=SyncHealth
             DEBUG=False
@@ -45,9 +101,15 @@ jobs:
             CORS_ORIGINS=["http://${{ secrets.ECS_HOST }}:8080"]
             ENVEOF
 
-            # 重新构建并启动
+            # ---------- 登录 GHCR 并拉取最新镜像 ----------
+            echo "${{ secrets.GHCR_READ_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_READ_USER }}" --password-stdin
+
+            docker compose pull
+
+            # ---------- 重启服务 ----------
             docker compose down
-            docker compose build --no-cache
             docker compose up -d
+
+            # ---------- 查看状态 ----------
             docker compose ps
             docker image prune -f
