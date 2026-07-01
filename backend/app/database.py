@@ -1,4 +1,5 @@
 from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -42,5 +43,9 @@ async def _run_migrations(conn) -> None:
 
 async def init_db():
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        # create_all 在多 worker 并发启动时有竞态，捕获 "already exists" 错误
+        try:
+            await conn.run_sync(Base.metadata.create_all)
+        except OperationalError:
+            pass  # 另一个 worker 已建表，忽略
         await _run_migrations(conn)

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { aiApi } from '../api/ai'
-import type { ChatMessageOut, ChatSessionOut } from '../types/ai'
+import type { ChatSessionOut } from '../types/ai'
 
 interface StreamMessage {
   id: number
@@ -30,13 +30,16 @@ export const useAIStore = defineStore('ai', () => {
     closeWs()
     currentSessionId.value = sessionId
     const res = await aiApi.getSessionMessages(sessionId)
-    messages.value = res.data.map(m => ({ ...m, streaming: false }))
+    messages.value = res.data.map(m => ({ ...m, streaming: false } as StreamMessage))
   }
 
   function getWsUrl(): string {
     const token = localStorage.getItem('access_token') || ''
-    // WebSocket 直连后端，不受 CORS 限制，避免 Vite 代理转发 WebSocket 的不确定性
-    return `ws://127.0.0.1:8000/api/v1/ai/chat/ws?token=${token}`
+    // 动态适配：开发环境直连后端 127.0.0.1:8000，生产环境走 Nginx 同源（IP:8080）
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const isDev = import.meta.env.DEV
+    const host = isDev ? '127.0.0.1:8000' : window.location.host
+    return `${protocol}//${host}/api/v1/ai/chat/ws?token=${token}`
   }
 
   function closeWs() {
