@@ -4,11 +4,13 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.models.ai import AIAgent, ChatMessage as ChatMessageModel, ChatSession
-from app.services.ai.base import ChatMessage
+from app.services.ai.base import ChatMessage, GenerationConfig
 from app.services.ai.context_builder import build_health_context
 from app.services.ai.dify_retriever import format_dify_context, parse_dify_records, retrieve_from_dify
-from app.services.ai.factory import get_provider
+from app.services.ai.factory import get_ollama_provider
+from app.services.ai.provider_fallback import chat_with_fallback
 
 DEFAULT_SYSTEM_PROMPT = (
     "You are SyncHealth AI, a knowledgeable and friendly health assistant. "
@@ -28,6 +30,7 @@ async def run_chat(
     message: str,
     session_id: int | None = None,
     agent_id: int | None = None,
+    model: str | None = None,
 ) -> tuple[int, str, list[dict]]:
     """Run a synchronous chat completion. Returns (session_id, response_text, dify_references)."""
     # Load or create session
@@ -89,9 +92,14 @@ async def run_chat(
     )
     db.add(user_msg)
 
-    # Call LLM
-    provider = get_provider()
-    response_text = await provider.chat(messages)
+    # Call LLM (主 provider + 自动 fallback；若指定了非默认 model 则直接用 Ollama)
+    config = GenerationConfig(model=model) if model else None
+    if model and model != settings.AI_MODEL:
+        # 用户手动选择了 Ollama 模型，直接用 OllamaProvider
+        ollama = get_ollama_provider()
+        response_text = await ollama.chat(messages, config)
+    else:
+        response_text = await chat_with_fallback(messages, config)
 
     # Save assistant message
     assistant_msg = ChatMessageModel(

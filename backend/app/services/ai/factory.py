@@ -2,6 +2,7 @@ from app.config import settings
 from app.services.ai.base import BaseLLMProvider
 
 _provider_instance: BaseLLMProvider | None = None
+_ollama_instance: BaseLLMProvider | None = None
 
 
 def get_provider() -> BaseLLMProvider:
@@ -29,6 +30,22 @@ def get_provider() -> BaseLLMProvider:
     return _provider_instance
 
 
+def get_ollama_provider() -> BaseLLMProvider:
+    """返回 Ollama provider 单例（作为备用 provider）。
+
+    独立于 get_provider()，不影响主 provider 的单例缓存。
+    """
+    global _ollama_instance
+    if _ollama_instance is not None:
+        return _ollama_instance
+
+    from app.services.ai.provider_ollama import OllamaProvider
+    _ollama_instance = OllamaProvider()
+    return _ollama_instance
+
+
 def reset_provider():
-    global _provider_instance
+    """重置所有 provider 单例"""
+    global _provider_instance, _ollama_instance
     _provider_instance = None
+    _ollama_instance = None

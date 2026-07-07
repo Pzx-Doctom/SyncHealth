@@ -10,12 +10,14 @@ from app.core.security import decode_token
 from app.database import get_db, async_session_factory
 from app.models.ai import ChatMessage as ChatMessageModel, ChatSession
 from app.models.user import User
-from app.schemas.ai import ChatMessageIn, ChatMessageOut, ChatSessionOut, DifyReference
+from app.schemas.ai import ChatMessageIn, ChatMessageOut, ChatSessionOut, DifyReference, OllamaModelOut, AIHealthOut, ProviderStatusOut
 from app.services.ai.agent_runtime import run_chat, DEFAULT_SYSTEM_PROMPT
-from app.services.ai.base import ChatMessage
+from app.services.ai.base import ChatMessage, GenerationConfig
 from app.services.ai.context_builder import build_health_context
 from app.services.ai.dify_retriever import format_dify_context, retrieve_from_dify, parse_dify_records
-from app.services.ai.factory import get_provider
+from app.services.ai.factory import get_ollama_provider, get_provider
+from app.services.ai.provider_fallback import chat_with_fallback, stream_chat_with_fallback
+from app.config import settings
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -27,7 +29,7 @@ async def chat(
     db: AsyncSession = Depends(get_db),
 ):
     session_id, response_text, dify_refs = await run_chat(
-        db, current_user.id, data.message, data.session_id, data.agent_id
+        db, current_user.id, data.message, data.session_id, data.agent_id, data.model
     )
     return {
         "session_id": session_id,
@@ -58,6 +60,7 @@ async def chat_ws(websocket: WebSocket, token: str = ""):
             message = data.get("message", "")
             session_id = data.get("session_id")
             agent_id = data.get("agent_id")
+            model = data.get("model")  # 运行时模型覆盖
 
             async with async_session_factory() as db:
                 # Load/create session
@@ -107,17 +110,29 @@ async def chat_ws(websocket: WebSocket, token: str = ""):
                 )
                 db.add(user_msg)
 
-                # Stream response
-                provider = get_provider()
+                # Stream response (主 provider + 自动 fallback；若指定了非默认 model 则直接用 Ollama)
+                config = GenerationConfig(model=model) if model else None
                 full_response = ""
                 try:
-                    async for chunk in provider.stream_chat(messages):
-                        full_response += chunk
-                        await websocket.send_text(json.dumps({"type": "token", "content": chunk}))
+                    if model and model != settings.AI_MODEL:
+                        # 用户手动选择了 Ollama 模型，直接用 OllamaProvider
+                        ollama = get_ollama_provider()
+                        async for chunk in ollama.stream_chat(messages, config):
+                            full_response += chunk
+                            await websocket.send_text(json.dumps({"type": "token", "content": chunk}))
+                    else:
+                        # 默认：主 provider + 自动 fallback
+                        async for chunk in stream_chat_with_fallback(messages, config):
+                            full_response += chunk
+                            await websocket.send_text(json.dumps({"type": "token", "content": chunk}))
                 except Exception:
                     # Fallback to non-streaming
                     if not full_response:
-                        full_response = await provider.chat(messages)
+                        if model and model != settings.AI_MODEL:
+                            ollama = get_ollama_provider()
+                            full_response = await ollama.chat(messages, config)
+                        else:
+                            full_response = await chat_with_fallback(messages, config)
                         await websocket.send_text(json.dumps({"type": "token", "content": full_response}))
 
                 # Save assistant message
@@ -239,3 +254,65 @@ async def delete_session(
 
     await db.delete(session)
     return {"detail": "Deleted"}
+
+
+@router.get("/models")
+async def list_models(current_user: User = Depends(get_current_user)):
+    """列出所有可用模型：DeepSeek（云端）+ Ollama（本地）"""
+    # DeepSeek 模型（固定，来自配置）
+    cloud_models = [
+        {
+            "name": settings.AI_MODEL,
+            "size": 0,
+            "family": "deepseek",
+            "parameter_size": "",
+            "quantization": "",
+            "is_cloud": True,
+        }
+    ]
+
+    # Ollama 本地模型（动态）
+    local_models = []
+    try:
+        ollama = get_ollama_provider()
+        if hasattr(ollama, "list_models"):
+            raw_models = await ollama.list_models()
+            local_models = [
+                {**m, "is_cloud": False} for m in raw_models
+            ]
+    except Exception:
+        pass
+
+    return {
+        "cloud_models": cloud_models,
+        "local_models": local_models,
+        "default_model": settings.AI_MODEL,
+        "fallback_enabled": settings.AI_FALLBACK_ENABLED,
+    }
+
+
+@router.get("/health")
+async def ai_health(current_user: User = Depends(get_current_user)):
+    """检查 AI 服务健康状态（DeepSeek + Ollama 双服务）"""
+    # Ollama 状态
+    ollama_status = {"status": "unknown", "models_count": 0, "models": [], "error": None}
+    try:
+        ollama = get_ollama_provider()
+        if hasattr(ollama, "health_check"):
+            ollama_status = await ollama.health_check()
+    except Exception as e:
+        ollama_status = {"status": "error", "models_count": 0, "models": [], "error": str(e)}
+
+    # DeepSeek 状态（通过 provider 的 get_model_info 确认实例可用，实际连通性在调用时验证）
+    primary_status = {
+        "status": "online" if settings.AI_API_KEY else "offline",
+        "models_count": 1,
+        "models": [settings.AI_MODEL],
+        "error": None,
+    }
+
+    return {
+        "primary": primary_status,
+        "ollama": ollama_status,
+        "fallback_enabled": settings.AI_FALLBACK_ENABLED,
+    }

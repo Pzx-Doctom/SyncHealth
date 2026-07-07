@@ -69,7 +69,7 @@ jobs:
             # ---------- 确保项目已克隆 ----------
             if [ ! -d "${{ secrets.ECS_PROJECT_PATH }}" ]; then
               echo "克隆项目..."
-              git clone https://github.com/Pzx-Doctom/SyncHealth.git ${{ secrets.ECS_PROJECT_PATH }}
+              git clone git@github.com:Pzx-Doctom/SyncHealth.git ${{ secrets.ECS_PROJECT_PATH }}
             fi
 
             cd ${{ secrets.ECS_PROJECT_PATH }}

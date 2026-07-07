@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { aiApi } from '../api/ai'
-import type { ChatSessionOut } from '../types/ai'
+import type { ChatSessionOut, OllamaModel, AIHealth } from '../types/ai'
 
 interface StreamMessage {
   id: number
@@ -19,11 +19,46 @@ export const useAIStore = defineStore('ai', () => {
   const messages = ref<StreamMessage[]>([])
   const loading = ref(false)
 
+  // 模型选择 & 服务状态
+  const cloudModels = ref<OllamaModel[]>([])
+  const localModels = ref<OllamaModel[]>([])
+  const currentModel = ref<string>('')  // 默认空，fetchModels 后设为 default_model
+  const aiHealth = ref<AIHealth | null>(null)
+  const defaultModel = ref<string>('')
+
   let ws: WebSocket | null = null
 
   async function fetchSessions() {
     const res = await aiApi.getSessions()
     sessions.value = res.data
+  }
+
+  async function fetchModels() {
+    try {
+      const [modelsRes, healthRes] = await Promise.all([
+        aiApi.getModels(),
+        aiApi.getHealth(),
+      ])
+      cloudModels.value = modelsRes.data.cloud_models
+      localModels.value = modelsRes.data.local_models
+      defaultModel.value = modelsRes.data.default_model
+      aiHealth.value = healthRes.data
+      // 默认选中 DeepSeek（云端默认模型）
+      if (!currentModel.value) {
+        currentModel.value = modelsRes.data.default_model
+      }
+    } catch (e) {
+      console.error('Failed to fetch AI models:', e)
+    }
+  }
+
+  async function refreshHealth() {
+    try {
+      const res = await aiApi.getHealth()
+      aiHealth.value = res.data
+    } catch (e) {
+      console.error('Failed to refresh AI health:', e)
+    }
   }
 
   async function loadSession(sessionId: number) {
@@ -83,6 +118,7 @@ export const useAIStore = defineStore('ai', () => {
         message,
         session_id: currentSessionId.value || undefined,
         agent_id: agentId,
+        model: currentModel.value || undefined,
       }))
     }
 
@@ -139,6 +175,8 @@ export const useAIStore = defineStore('ai', () => {
 
   return {
     sessions, currentSessionId, messages, loading,
+    cloudModels, localModels, currentModel, aiHealth, defaultModel,
     fetchSessions, loadSession, sendMessage, newChat, deleteSession,
+    fetchModels, refreshHealth,
   }
 })

@@ -1,12 +1,13 @@
 import apiClient from './client'
-import type { ChatMessageOut, ChatSessionOut, AgentOut, AgentCreate, DifyReference } from '../types/ai'
+import type { ChatMessageOut, ChatSessionOut, AgentOut, AgentCreate, DifyReference, ModelsResponse, AIHealth } from '../types/ai'
 
 export const aiApi = {
-  chat(message: string, sessionId?: number, agentId?: number) {
+  chat(message: string, sessionId?: number, agentId?: number, model?: string) {
     return apiClient.post<{ session_id: number; response: string; dify_references: DifyReference[] }>('/ai/chat', {
       message,
       session_id: sessionId,
       agent_id: agentId,
+      model,
     })
   },
   getSessions() {
@@ -17,6 +18,12 @@ export const aiApi = {
   },
   deleteSession(sessionId: number) {
     return apiClient.delete(`/ai/sessions/${sessionId}`)
+  },
+  getModels() {
+    return apiClient.get<ModelsResponse>('/ai/models')
+  },
+  getHealth() {
+    return apiClient.get<AIHealth>('/ai/health')
   },
 }
 

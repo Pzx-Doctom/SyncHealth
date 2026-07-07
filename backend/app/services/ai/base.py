@@ -15,6 +15,7 @@ class GenerationConfig:
     max_tokens: int = 2048
     top_p: float = 1.0
     stop_sequences: list[str] = field(default_factory=list)
+    model: str | None = None  # 运行时模型覆盖，None=用 provider 默认模型
 
 
 @dataclass

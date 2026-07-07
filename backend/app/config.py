@@ -24,6 +24,16 @@ class Settings(BaseSettings):
     AI_MAX_CONTEXT_TOKENS: int = 8000
     AI_TEMPERATURE: float = 0.7
 
+    # AI Fallback（主 provider 失败时降级到 Ollama 本地模型）
+    AI_FALLBACK_ENABLED: bool = False  # 默认关闭，显式开启才启用降级
+
+    # Ollama 本地模型配置（作为备用 provider）
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "qwen2.5:7b"  # 默认模型，可通过 .env 覆盖
+    OLLAMA_CONTEXT_WINDOW: int = 4096  # 本地模型上下文窗口，按实际模型调整
+    OLLAMA_TIMEOUT: int = 180  # 同步调用超时（秒），本地推理较慢
+    OLLAMA_STREAM_TIMEOUT: int = 300  # 流式调用超时（秒）
+
     # Dify Knowledge Base
     DIFY_API_BASE: str = "https://api.dify.ai/v1"
     DIFY_API_KEY: str = ""

@@ -98,3 +98,11 @@ mobile/*.orig.*
 
 # ==================== Learning docs (可选) ====================
 # LEARNING_GUIDE.md
+
+# ==================== Deployment docs (个人) ====================
+DEPLOY.md
+DEPLOY_METHODOLOGY.md
+
+# ==================== Resume / 简历 ====================
+unpacked_resume/
+潘宗旭2026*.docx

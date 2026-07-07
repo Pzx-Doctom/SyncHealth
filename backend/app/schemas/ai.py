@@ -7,6 +7,33 @@ class ChatMessageIn(BaseModel):
     message: str
     session_id: int | None = None
     agent_id: int | None = None
+    model: str | None = None  # 运行时模型覆盖，None=用默认 provider
+
+
+class OllamaModelOut(BaseModel):
+    """Ollama 本地模型信息"""
+    name: str
+    size: int = 0
+    digest: str = ""
+    family: str = ""
+    parameter_size: str = ""
+    quantization: str = ""
+    modified_at: str = ""
+
+
+class ProviderStatusOut(BaseModel):
+    """单个 provider 的健康状态"""
+    status: str  # online | offline | error | unknown
+    models_count: int = 0
+    models: list[str] = []
+    error: str | None = None
+
+
+class AIHealthOut(BaseModel):
+    """双 provider 健康状态汇总"""
+    primary: ProviderStatusOut
+    ollama: ProviderStatusOut
+    fallback_enabled: bool = False
 
 
 class DifyReference(BaseModel):

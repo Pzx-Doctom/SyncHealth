@@ -24,6 +24,7 @@ function renderMarkdown(text: string): string {
 
 onMounted(() => {
   aiStore.fetchSessions()
+  aiStore.fetchModels()
 })
 
 onUnmounted(() => {
@@ -85,6 +86,38 @@ function toggleRef(el: EventTarget | null) {
 
     <!-- Main Chat -->
     <div class="chat-main">
+      <!-- 模型选择 & 状态指示灯工具栏 -->
+      <div class="chat-toolbar">
+        <select v-model="aiStore.currentModel" class="model-selector"
+          :class="{ 'selector-warning': aiStore.aiHealth?.primary?.status === 'offline' }">
+          <optgroup label="云端模型">
+            <option v-for="m in aiStore.cloudModels" :key="m.name" :value="m.name">
+              {{ m.name }} (云端)
+            </option>
+          </optgroup>
+          <optgroup label="本地模型" v-if="aiStore.localModels.length > 0">
+            <option v-for="m in aiStore.localModels" :key="m.name" :value="m.name">
+              {{ m.name }}{{ m.parameter_size ? ` (${m.parameter_size})` : '' }} (本地)
+            </option>
+          </optgroup>
+        </select>
+        <div class="status-group">
+          <span class="status-item">
+            <span class="status-dot"
+              :class="aiStore.aiHealth?.primary?.status || 'unknown'"></span>
+            <span class="status-label">DeepSeek</span>
+          </span>
+          <span class="status-item">
+            <span class="status-dot"
+              :class="aiStore.aiHealth?.ollama?.status || 'unknown'"></span>
+            <span class="status-label">Ollama</span>
+          </span>
+          <span v-if="aiStore.aiHealth?.fallback_enabled" class="fallback-badge" title="DeepSeek 不可用时自动切换到本地模型">
+            自动降级
+          </span>
+        </div>
+      </div>
+
       <div class="messages" ref="messagesContainer">
         <div v-if="aiStore.messages.length === 0" class="chat-welcome">
           <h2>SyncHealth AI</h2>
@@ -168,6 +201,56 @@ function toggleRef(el: EventTarget | null) {
 .empty-sessions { text-align: center; padding: 20px; font-size: 13px; color: var(--color-text-secondary); }
 
 .chat-main { flex: 1; display: flex; flex-direction: column; }
+
+/* 模型选择工具栏 */
+.chat-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 32px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-card);
+  gap: 16px;
+}
+.model-selector {
+  width: 240px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: white;
+  font-size: 13px;
+  color: var(--color-text);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.model-selector:hover { border-color: var(--color-primary); }
+.model-selector:focus { border-color: var(--color-primary); }
+.model-selector.selector-warning { border-color: #F59E0B; }
+
+.status-group { display: flex; align-items: center; gap: 16px; }
+.status-item { display: flex; align-items: center; gap: 6px; }
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #9CA3AF;
+  transition: background-color 0.3s;
+}
+.status-dot.online { background: #10B981; }
+.status-dot.offline { background: #9CA3AF; }
+.status-dot.error { background: #EF4444; }
+.status-dot.unknown { background: #D1D5DB; }
+.status-label { font-size: 12px; color: var(--color-text-secondary); }
+
+.fallback-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #EEF2FF;
+  color: #4F46E5;
+  font-weight: 500;
+}
 
 .messages {
   flex: 1;

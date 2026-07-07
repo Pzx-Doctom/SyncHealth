@@ -39,3 +39,38 @@ export interface AgentCreate {
   system_prompt: string
   health_data_scope?: string[]
 }
+
+// Ollama 本地模型信息
+export interface OllamaModel {
+  name: string
+  size: number
+  digest?: string
+  family?: string
+  parameter_size?: string
+  quantization?: string
+  modified_at?: string
+  is_cloud?: boolean
+}
+
+// 单个 provider 健康状态
+export interface ProviderStatus {
+  status: 'online' | 'offline' | 'error' | 'unknown'
+  models_count: number
+  models: string[]
+  error?: string | null
+}
+
+// 双 provider 健康状态汇总
+export interface AIHealth {
+  primary: ProviderStatus
+  ollama: ProviderStatus
+  fallback_enabled: boolean
+}
+
+// 模型列表响应
+export interface ModelsResponse {
+  cloud_models: OllamaModel[]
+  local_models: OllamaModel[]
+  default_model: string
+  fallback_enabled: boolean
+}
