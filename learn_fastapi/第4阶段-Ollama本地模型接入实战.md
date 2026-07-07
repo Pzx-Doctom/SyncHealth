@@ -873,6 +873,119 @@ ai.py: 保存 assistant 消息到数据库
     closeWs()                        ← 关闭 WebSocket
 ```
 
+#### 8.1.1 为什么要用 WebSocket 而不是 HTTP？
+
+核心原因：**流式对话需要"打字机效果"**，不能等 AI 生成完再一次性返回。
+
+**HTTP 方式（等 3 秒一次性返回）**：
+
+```
+客户端 ──POST /ai/chat──→ 服务器
+                             ↓
+                       DeepSeek 生成中...（3秒后完成）
+                             ↓
+客户端 ←── 完整回复 ────  服务器
+```
+
+用户盯着空白界面等 3 秒 → 体验很差。
+
+**WebSocket 方式（边生成边推送）**：
+
+```
+客户端 ──WebSocket 握手──→ 服务器
+                             ↓
+客户端 ←── {"token":"您"} ──── 0.2s  ← 第一个字就到了！
+客户端 ←── {"token":"的"} ──── 0.3s
+客户端 ←── {"token":"睡"} ──── 0.4s
+客户端 ←── {"token":"眠"} ──── 0.5s
+        ...
+客户端 ←── {"type":"done"} ──── 3.0s  ← 完成
+```
+
+0.2 秒用户就看到第一个字了——**不需要干等**。
+
+另外，WebSocket 支持**同一连接多轮复用**。后端 WS Handler 用了 `while True`，一个连接可以持续发多轮消息。如果用 SSE（Server-Sent Events），每轮对话都要重建 HTTP 连接、重新认证，开销更大。
+
+#### 8.1.2 WebSocket 四个回调是如何工作的？
+
+看完阶段 ① 的代码你可能会问：`sendMessage()` 里只调用了 `ws.onopen` 发消息，后面的 `ws.onmessage`、`ws.onerror`、`ws.onclose` 是谁调用的？
+
+**答案：浏览器内核调用。你的代码只赋值，浏览器在合适的时机调用。**
+
+这四个属性是 **W3C 标准 API**（2011 年定稿），所有浏览器（Chrome / Firefox / Safari / Edge）行为一致：
+
+| 属性 | 你做的 | 浏览器做的（调用时机） |
+|------|--------|----------------------|
+| `ws.onopen` | 赋值一个函数 | TCP 握手成功时调用 |
+| `ws.onmessage` | 赋值一个函数 | 收到服务器推送数据时调用（可能 N 次） |
+| `ws.onerror` | 赋值一个函数 | 网络层出错时调用 |
+| `ws.onclose` | 赋值一个函数 | 连接关闭时调用 |
+
+不是你的代码调用它们，而是你把函数"寄存"在 `ws` 对象上，浏览器发现对应事件时替你调用。所有浏览器 API 都遵循这个模式（`button.onclick`、`input.onkeydown`、`setTimeout(fn, 1000)` 等等）。
+
+**为什么 `sendMessage()` 函数执行完了，后续代码还能跑？**
+
+```typescript
+ws.onopen = () => { ws.send(...) }    // 注册了回调
+ws.onmessage = (e) => { ... }         // 注册了回调
+ws.onclose = () => { ... }            // 注册了回调
+
+} // ← sendMessage() 函数在这里返回了！
+
+// 函数返回后，JavaScript 主线程没有被卡住
+// 浏览器的事件循环（Event Loop）在后台持续运行：
+//   "有事件吗？"
+//     → TCP 握手成功？→ 调用 ws.onopen
+//     → 收到数据？    → 调用 ws.onmessage
+//     → 连接出错？    → 调用 ws.onerror
+//     → 连接断开？    → 调用 ws.onclose
+//   "还有吗？没有就等着..."
+```
+
+用一个餐厅类比帮助理解：
+
+```
+你（sendMessage）：服务员，牛排好了叫我 → 注册 onmessage 回调
+你（主线程）：    然后回到座位继续喝饮料看手机 → 函数返回，不卡住
+服务员（事件循环）：一直在前台，有事件就喊号
+厨房（浏览器内核）：牛排好了 → 响铃
+服务员（事件循环）：听到响铃 → 喊"123号！"
+你（onmessage回调）：取餐 → 开始吃（追加 content）
+```
+
+三个概念的关系：
+- **回调** = 你留给服务员的号码牌（`ws.onmessage = () => {}`——把函数存起来）
+- **事件循环** = 前台服务员（浏览器内置调度器，不停检查"有新事件吗"）
+- **异步调度** = 厨房喊号 + 服务员喊你（事件发生时，浏览器自动调用对应的回调函数）
+
+#### 8.1.3 `ws.onopen` 是浏览器怎么发现并调用的？
+
+```typescript
+// 你的代码
+ws.onopen = () => { console.log('连上了') }
+//         ↑
+//  把箭头函数的内存地址存到 ws.onopen 属性里
+
+// 浏览器内部（伪代码，C++ 实现的）
+class WebSocket {
+    onopen: Function | null = null
+    
+    constructor(url) {
+        this._startTCPConnection(url)     // 发起 TCP 三次握手
+    }
+    
+    _onConnected() {                      // TCP 握手成功 → C++ 通知 JS
+        if (this.onopen !== null) {       // 你存了回调吗？
+            this.onopen()                 // 存了 → 我帮你调用
+        }
+    }
+}
+```
+
+`new WebSocket(url)` 之后，浏览器在后台做 DNS 解析 → TCP 三次握手 → WebSocket 协议升级。这些都在 C++ 层完成，你完全看不到。握手成功时，浏览器检查 `ws.onopen` 是不是函数，是就调用它。
+
+如果你不写 `ws.onopen = ...`（属性是 `null`），连接照样建立，但**没人响应这个事件**——就像服务员喊了号但没人回应。
+
 ### 8.2 同一请求的两种路径对比
 
 | 步骤 | DeepSeek 路径（场景 A） | Ollama 路径（场景 C） |
