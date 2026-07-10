@@ -176,6 +176,12 @@ const apiClient = axios.create({
    * 大多数 RESTful API 都使用 JSON 格式进行数据交换。
    */
   headers: { 'Content-Type': 'application/json' },
+
+  /**
+   * timeout：请求超时时间（毫秒）
+   * 云服务器带宽有限，大文件上传需要更长时间
+   */
+  timeout: 300000, // 5 分钟
 })
 
 /*

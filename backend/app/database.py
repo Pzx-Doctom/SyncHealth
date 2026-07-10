@@ -5,7 +5,17 @@ from sqlalchemy.orm import DeclarativeBase
 
 from app.config import settings
 
-engine = create_async_engine(settings.DATABASE_URL, echo=settings.DEBUG)
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    echo=settings.DEBUG,
+    connect_args={
+        # WAL 模式：写操作不阻塞读操作，读操作不阻塞写操作
+        # 对 2-worker gunicorn + 后台导入任务至关重要
+        "timeout": 30,  # 获取写锁的等待时间(秒)
+    },
+    pool_size=5,
+    max_overflow=5,
+)
 
 async_session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -43,6 +53,13 @@ async def _run_migrations(conn) -> None:
 
 async def init_db():
     async with engine.begin() as conn:
+        # WAL 模式：大幅提升并发读写性能，防止 "database is locked"
+        await conn.execute(text("PRAGMA journal_mode=WAL"))
+        # 提高缓存和同步设置
+        await conn.execute(text("PRAGMA synchronous=NORMAL"))
+        await conn.execute(text("PRAGMA cache_size=-32000"))  # 32MB 缓存
+        await conn.execute(text("PRAGMA busy_timeout=30000"))  # 30s 忙等待
+
         # create_all 在多 worker 并发启动时有竞态，捕获 "already exists" 错误
         try:
             await conn.run_sync(Base.metadata.create_all)

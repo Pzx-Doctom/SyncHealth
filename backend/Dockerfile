@@ -39,4 +39,4 @@ EXPOSE 8000
 # gunicorn + uvicorn worker
 # SQLite 写锁限制，用 2 个 worker 平衡并发与锁竞争
 # 启动前确保 data 目录可写（Docker volume 挂载可能覆盖权限）
-CMD ["sh", "-c", "mkdir -p /app/data/uploads && exec gunicorn app.main:app -w 2 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000"]
+CMD ["sh", "-c", "mkdir -p /app/data/uploads && exec gunicorn app.main:app -w 2 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 --timeout 300 --graceful-timeout 30"]

@@ -34,6 +34,13 @@ function pickFile(f: File) {
     file.value = null
     return
   }
+  // 文件大小检查（约束已提高到 200MB，此处给用户友好提示）
+  const MAX_SIZE = 200 * 1024 * 1024
+  if (f.size > MAX_SIZE) {
+    uploadError.value = `文件过大（${formatSize(f.size)}），请压缩后再上传（限制 ${formatSize(MAX_SIZE)}）`
+    file.value = null
+    return
+  }
   uploadError.value = ''
   file.value = f
 }
