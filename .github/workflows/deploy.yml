@@ -73,6 +73,9 @@ jobs:
             fi
 
             cd ${{ secrets.ECS_PROJECT_PATH }}
+
+            # 强制使用 SSH 协议（阿里云 ECS 在国内，HTTPS 访问 GitHub 不稳定）
+            git remote set-url origin git@github.com:Pzx-Doctom/SyncHealth.git
             git pull origin main
 
             # ---------- 动态生成 .env.production ----------
