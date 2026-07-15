@@ -103,7 +103,20 @@ SyncHealth/
 │       ├── services/          # HealthKit 采集 + 数据同步
 │       ├── screens/           # 页面组件
 │       └── stores/            # Zustand 状态管理
-└── LEARNING_GUIDE.md          # 开发学习指南
+└── docs/                       # 文档归档（技术/面试/简历）
+    ├── technical/              # 开发/数据/部署/学习资料
+    │   ├── LEARNING_GUIDE.md
+    │   ├── DEPLOY.md
+    │   ├── DEPLOY_METHODOLOGY.md
+    │   ├── 开发问题与解决方案.md
+    │   ├── 数据采集规则.md
+    │   ├── 数据上传导入处理入库流程详解.md
+    │   ├── learn_fastapi/
+    │   └── learn_vue/
+    ├── interview/              # 面试题库与问答手册
+    │   ├── 前端面试题库.md
+    │   └── AI应用开发岗面试问答手册.md
+    └── resume/                 # 简历（含解包版 unpacked/）
 ```
 
 ## 快速开始

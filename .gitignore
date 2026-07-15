@@ -26,6 +26,8 @@ htmlcov/
 
 # ==================== Database ====================
 *.db
+*.db-wal
+*.db-shm
 *.sqlite
 *.sqlite3
 *.sqbpro
@@ -103,6 +105,7 @@ mobile/*.orig.*
 DEPLOY.md
 DEPLOY_METHODOLOGY.md
 
-# ==================== Resume / 简历 ====================
-unpacked_resume/
+# ==================== Resume / 简历（含解包产物，个人隐私） ====================
+docs/resume/
 潘宗旭2026*.docx
+unpacked_resume/
